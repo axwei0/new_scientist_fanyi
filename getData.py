@@ -1,10 +1,9 @@
 #!/usr/bin/python
 #-*- coding:utf-8 -*-
 import urllib,re,urllib2,time,pickle
-#需要在有道网站申请
+#需要在有道网站申请http://fanyi.youdao.com/openapi
 KEYFROM = 'xxxxxxxx'
 KEY = 'xxxx'
-
 def getArticle(html):
     articlelist = []
     reg = r'https://www.newscientist.com/article/.+/"'
@@ -21,10 +20,9 @@ def getPara():
     paralist = []
     oldLinks = []
     oldArticle = []
+    different = []
     r = urllib2.urlopen('https://www.newscientist.com/',timeout=1000)
     html = r.read()
-
-    article1 = getArticle(html)[1]
 
     try:
         s = open('dump.txt', 'rb')
@@ -38,26 +36,22 @@ def getPara():
     if oldArticle == [] :
         unPublish = [[a, 0] for a in article]
         pickle.dump(unPublish, s)
+        different = article
     elif list(set(article).difference(set(oldArticle))) != []:
         different = list(set(article).difference(set(oldArticle)))
         # 序列化文章标题,发布状态为未发布
         unPublish = [[a, 0] for a in different]
         pickle.dump(oldLinks + unPublish, s)
     else:
+        unPublish = [[a, 0] for a in article]
+        pickle.dump(unPublish, s)
         s.close()
         return 
     s.close()
     for article1 in different:
         r = urllib2.urlopen(article1,timeout=1000)
         html = r.read()
-        #不替换会有乱码
-        html = html.replace("doesn’t", "does not")
-        html = html.replace("isn’t", "is not")
-        html = html.replace("don’t", "do not")
-        html = html.replace("isn’t", "is not")
-        html = html.replace("you’re", "you are")
-        html = html.replace("It’s", "It is")
-    
+
         #查找文章主题内容
         indexBegin =  html.find('article-content')
         indexEnd =  html.find('entry-content')
@@ -94,6 +88,7 @@ def getPara():
             para = para.replace('...', '')
             paralist.append(para)
         getTranslate(''.join(paralist))
+        paralist = []
 
 
 def getTranslate(para='This is empty.'):
@@ -101,14 +96,26 @@ def getTranslate(para='This is empty.'):
     paralist = para.split('.')
     print paralist
     for paraTemp in paralist:
-        paraTemp2 = paraTemp.replace('&#8220;','').replace(' ','%20')
-        paraTemp2 = paraTemp2.replace('&#8221;', '')
-        paraTemp2 = paraTemp2.replace('"', '')
-        paraTemp2 = paraTemp2.replace('&#8211;', ',')
+        if paraTemp.strip() == '':
+            continue
+
+        paraTemp = paraTemp.replace('\xc2\xa0', '')
+        paraTemp2 = paraTemp.replace('&#8220;','%22').replace(' ','%20')
+        paraTemp2 = paraTemp2.replace('&#8221;', '%22')
+        paraTemp2 = paraTemp2.replace('"', '%22')
+        paraTemp2 = paraTemp2.replace('\xe2\x80\x9c', '%22')
+        paraTemp2 = paraTemp2.replace('\xe2\x80\x9d', '%22')
+        paraTemp2 = paraTemp2.replace('\xe2\x80\x99', '%27')
+        paraTemp2 = paraTemp2.replace("'", '%27')
+        paraTemp2 = paraTemp2.replace('&#8211;', '%2D')
+
         url = "http://fanyi.youdao.com/openapi.do?keyfrom="+KEYFROM+"&key="+KEY+"&type=data&doctype=json&version=1.1&q="+paraTemp2
-        r = urllib2.urlopen(url, timeout=1000)
+        r = urllib2.urlopen(url.encode('utf-8'), timeout=1000)
         temp = eval(r.read())
         temp['translation'][0] =  temp['translation'][0].replace('\u2022', '·')
+        temp['translation'][0] = temp['translation'][0].replace('\u0080\u0099', "'")
+        temp['translation'][0] = temp['translation'][0].replace('\u201C', '"')
+        temp['translation'][0] = temp['translation'][0].replace('\u201D', '"')
         print temp['translation'][0]
 
         paraTemp = paraTemp.replace('&#8220;','"').lstrip()
