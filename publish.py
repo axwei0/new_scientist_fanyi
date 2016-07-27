@@ -31,23 +31,21 @@ def run():
         client.set_access_token(r.access_token, r.expires_in)
 
 #以上步骤就是授权的过程，现在的client就可以随意调用接口进行微博操作了，下面的代码就是用用户输入的内容发一条新微博
+#将翻译好的文件复制到text子文件夹下。因为newscientist网址获取经常会超时,必须先在台式机上利用getData.py和vpn获取,再在树莓派上发布
+        files = os.listdir('./text')
+        for onefile in files:
+                txt = './text/' + onefile
+                textToPic.tToP(txt)
+                file = open(txt, 'r')
+                title = file.readline()
+                #  client.statuses.update.post(status=content)
+                f = open(txt+'.jpg', 'rb')
+                client.statuses.upload.post(status=title, pic=f)
+                f.close() # APIClient不会自动关闭文件，需要手动关闭
+                print "Send succesfully!"
 
-        while True:
-                print "Ready! Do you want to send a new weibo?(y/n)"
-                choice = raw_input()
-                if choice =='y' or choice =='Y':
-                        content = raw_input('input the your new weibo content : ')
-                        if content:
-                                #调用接口发一条新微薄，status参数就是微博内容
-                                f = open('./2016_06_28_22_02_48.jpg', 'rb')
-                                client.statuses.upload.post(status=content, pic=f)
-                                f.close() # APIClient不会自动关闭文件，需要手动关闭
-                                print "Send succesfully!"
-                                break
-                        else:
-                                print "Error! Empty content!"
-                if choice =='n' or choice =='N':
-                        break
+                time.sleep(3*60*60)
 
 if __name__ == "__main__":
         run()
+
